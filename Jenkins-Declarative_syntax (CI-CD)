@@ -1,0 +1,205 @@
+(https://jenkins.io/doc/book/pipeline/syntax/) - for checking out syntax
+
+##### Continous Integration process (testing and packaging)
+
+1) simple maven test job (declarative syntax)
+pipeline {
+    agent {
+        label "maven"
+    }
+    tools {
+        jdk 'Openjdk8'
+        maven 'Maven363'
+    }
+    stages {
+        stage ('Build') {
+            steps {
+                sh "mvn clean test"
+            }
+        }
+    }
+    post {
+        success {
+            echo "good job"
+        }
+        failure {
+            echo "Improve the skills"
+        }
+        always{
+            echo "work hard"
+        }
+    }
+
+}
+
+
+
+
+2) Declarative syntax for maven test and packaging.
+pipeline {
+    agent {
+        label "maven"
+    }
+    tools {
+        jdk 'Openjdk8'
+        maven 'Maven363'
+    }
+    stages {
+        stage ('Build') {
+            steps {
+                sh "mvn clean test"
+            }
+        }
+        stage ('Packaging') {
+            steps {
+                sh "mvn package -DskipTests=true" (-DskipTests means skiping test, coz testing already done in test step)
+            }
+        }
+    }
+    post {
+        success {
+            echo "good job"
+        }
+        failure {
+            echo "Improve the skills"
+        }
+        always{
+            echo "work hard"
+        }
+    }
+
+
+
+3) publish html test report. 
+pipeline {
+    agent {
+        label "maven"
+    }
+    tools {
+        jdk 'Openjdk8'
+        maven 'Maven363'
+    }
+    stages {
+        stage ('Build') {
+            steps {
+                sh "mvn clean test surefire-report:report-only"
+                publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site', reportFiles: 'surefire-report.html', reportName: 'TestReport', reportTitles: ''])
+            }
+        }
+        stage ('Packaging') {
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+        }
+    }
+    post {
+        success {
+            echo "good job"
+        }
+        failure {
+            echo "Improve the skills"
+        }
+        always{
+            echo "work hard"
+        }
+    }
+
+}
+
+(note for publish HTML test file: path of sure-fire is inside the working directory. eg (/home/ec2-user/jenkins-practise-agent/workspace/Maven-practise/first-maven-job/target/site)
+
+
+####Continous Deployment
+ 1)deploying the application in new servee using ssh key 
+
+pipeline {
+    agent {
+        label "maven"
+    }
+    tools {
+        jdk 'Openjdk8'
+        maven 'Maven363'
+    }
+    stages {
+        stage ('Build') {
+            steps {
+                sh "mvn clean test surefire-report:report-only"
+                publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site', reportFiles: 'surefire-report.html', reportName: 'TestReport', reportTitles: ''])
+            }
+        }
+        stage ('Packaging') {
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+        }
+        stage ('Deploy') {
+            steps {
+                sshagent(['agent-practise-key']) {
+                sh "scp -o StrictHostKeyChecking=no target/my-app-1.0-SNAPSHOT.jar ec2-user@172.31.38.40:/home/ec2-user" 
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo "good job"
+        }
+        failure {
+            echo "Improve the skills"
+        }
+        always{
+            echo "work hard"
+        }
+    }
+
+}
+
+2) Deployment adding input message, mail and timeout option
+
+pipeline {
+    agent {
+        label "maven"
+    }
+    tools {
+        jdk 'Openjdk8'
+        maven 'Maven363'
+    }
+    options {
+        timeout(time: 20, unit: 'SECONDS')
+    }
+    stages {
+        stage ('Build') {
+            steps {
+                sh "mvn clean test surefire-report:report-only"
+                publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site', reportFiles: 'surefire-report.html', reportName: 'TestReport', reportTitles: ''])
+            }
+        }
+        stage ('Packaging') {
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+        }
+        stage ('Deploy') {
+            steps {
+                //sh "mail -s 'the job is waiting for approval' devrajadhikari333@gmail.com"
+                input message: 'Do you want me to Deploy?', ok: 'Approve'
+                sshagent(['Deployment-agent']) {
+                sh "scp -o StrictHostKeyChecking=no target/my-app-1.0-SNAPSHOT.jar ec2-user@172.31.38.40:/home/ec2-user" 
+                }
+            }
+        }
+        
+    }
+    post {
+        success {
+            echo "good job"
+        }
+        failure {
+            echo "Improve the skills"
+        }
+        always{
+            echo "work hard"
+        }
+    }
+
+}
