@@ -1,0 +1,164 @@
+1) Declarative Jenkins
+
+pipeline{
+	agent{
+		label 'agent_name'
+	}
+	environment {
+	project = "test"
+	}
+	stages{
+		stage('build'){
+			steps{
+				sh "sh untilloop.sh"
+			}
+		stage('Array'){
+			steps{
+				sh "sh array"
+			}
+		}
+	}
+}
+post {
+success {
+echo "success"
+sh "mail -s "success" devrajadhikari333@gmail.com'
+}
+failure{
+echo "Failed"
+sh 'mail -s "success" devrajadhikari333@gmail.com'
+}
+always{
+deleteDir()
+}
+
+
+
+
+
+2) Scripted Jenkins
+node(Binod){
+    stage('checkout'){
+        checkout scm
+    }
+    stage('Build'){
+        sh "sh variable.sh"
+    }
+    stage('array'){
+        sh "sh until.sh"
+    }
+    stage('NOtify'){
+        sh " echo THis job run successfully"
+    }
+}
+
+
+
+
+
+3)Declarative Jenkins script using maven
+pipeline {
+    agent {
+        label 'maven'
+    }
+    tools {
+        jdk 'openjdk8'
+        maven 'maven'
+    }
+    stages {
+        stage('Test'){
+            steps {
+                sh "mvn clean test surefire-report:report-only"
+                publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site', reportFiles: 'surefire-report.html', reportName: 'Test Report', reportTitles: ''])
+            }            
+        }
+        stage('Packaging'){ 
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+            post {
+                success {
+                    echo "good job packaging is done" //added some comments
+                }
+                failure {
+                    echo "failure packaging could not done"
+                }
+                always {
+                    echo "work hard"
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo "good job" //added some comments
+        }
+        failure {
+            echo "failure work hard"
+        }
+        always {
+            echo "work hard"
+        }
+    }
+}
+
+
+
+4)Added Input plugins, Timeout plugins and Continous Deployment
+pipeline {
+    agent {
+        label 'maven'
+    }
+    tools {
+        jdk 'openjdk8'
+        maven 'maven'
+    }
+    options {
+        timeout(1)
+    }
+    stages {
+        stage('Test'){
+            steps {
+                sh "mvn clean test surefire-report:report-only"
+                publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site', reportFiles: 'surefire-report.html', reportName: 'Test Report', reportTitles: ''])
+            }            
+        }
+        stage('Packaging'){ 
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+            post {
+                success {
+                    echo "good job packaging is done" //added some comments
+                }
+                failure {
+                    echo "failure packaging could not done"
+                }
+                always {
+                    echo "work hard"
+                }
+            }
+        }
+        
+        stage('Deploy'){
+            steps{
+                //sh "mail -s 'the job is waiting your approval devrajadhikari333@gmail.com'" //if user want to send email to the approval
+                input message: 'Do you want me to Deploy? ', ok: 'Approve'
+                sshagent(['target-dev']) {
+                sh "scp -o StrictHostKeyChecking=no target/my-app-1-RELEASE.jar ec2-user@18.233.155.40:/home/ec2-user"
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo "good job" //added some comments
+        }
+        failure {
+            echo "failure work hard"
+        }
+        always {
+            echo "work hard"
+        }
+    }
+}
